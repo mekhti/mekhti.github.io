@@ -118,17 +118,50 @@
     width: calc(100% - 32px); max-width: 528px;
     background: #12261f; border: 1px solid var(--ok); color: var(--text);
     border-radius: 12px; padding: 12px 14px; font-size: .95rem;
-    transition: transform .25s ease; z-index: 10;
+    transition: transform .25s ease, visibility .25s; z-index: 10; visibility: hidden;
   }
-  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.show { transform: translateX(-50%) translateY(0); visibility: visible; }
   .toast.warn { background: #2a1a12; border-color: #d29922; }
   .toast a { color: #7ee2d4; font-weight: 600; }
 
-  /* Fallback block shown only if clipboard fails */
-  #fallback textarea {
-    width: 100%; min-height: 160px; background: var(--bg); color: var(--text);
-    border: 1px solid var(--border); border-radius: 10px; padding: 10px; font: inherit; font-size: 14px;
+  /* Segmented control (target: other / me) */
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label { min-height: 46px; display: grid; place-items: center; padding: 6px; text-align: center; cursor: pointer; background: var(--bg); color: var(--muted); font-weight: 600; font-size: .95rem; }
+  .seg input:checked + label { background: var(--surface-2); color: #fff; box-shadow: inset 0 -3px 0 var(--accent); }
+  .seg input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* Wizard: one card per reported account */
+  #result .summary { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin: 0 0 10px; }
+  #result .summary h2 { margin: 0; font-size: 1.1rem; }
+  #result .summary span { color: var(--muted); font-size: .9rem; }
+  .acc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; }
+  .acc.active { border-color: var(--accent); }
+  .acc.done { opacity: .65; }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: none; border: 0; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .acc-head .badge { flex: 0 0 auto; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; font-size: .85rem; color: var(--muted); }
+  .acc-head .who { flex: 1; min-width: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .acc-head .state { color: var(--ok); font-weight: 700; }
+  .acc-body { padding: 0 16px 16px; }
+  ol.todo { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+  ol.todo > li { counter-increment: s; padding: 12px 0; border-top: 1px solid var(--border); }
+  ol.todo > li:first-child { border-top: 0; padding-top: 0; }
+  .todo .hint { display: block; font-size: .9rem; color: var(--muted); margin-bottom: 8px; }
+  .todo .hint::before { content: counter(s) ". "; color: var(--text); font-weight: 700; }
+  .todo .hint b { color: var(--text); font-weight: 600; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  button.act {
+    flex: 1 1 auto; min-height: 46px; padding: 8px 14px;
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-radius: 10px;
+    font: inherit; font-size: .95rem; font-weight: 600; cursor: pointer;
   }
+  button.act.main { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.act.ok { border-color: var(--ok); color: var(--ok); }
+  button.act.ok::after { content: " ✓"; }
+  .todo small { display: block; color: var(--muted); font-size: .8rem; margin-top: 6px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+  button.ghost { min-height: 48px; background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 12px; font: inherit; font-weight: 600; cursor: pointer; }
+  .alldone { text-align: center; padding: 18px; color: var(--ok); font-weight: 700; }
   footer { text-align: center; color: var(--muted); font-size: .8rem; padding: 20px 0 8px; }
   [hidden] { display: none !important; }
 </style>
@@ -138,7 +171,7 @@
 
   <header>
     <h1>İti Qovan Qrupu</h1>
-    <p>Şikayət mətni generatoru</p>
+    <p>Şikayət köməkçisi</p>
   </header>
 
   <nav class="tabs" aria-label="Məlumat bölmələri">
@@ -169,30 +202,31 @@
     <h2>Şikayət necə göndərilir</h2>
     <ol class="steps">
       <li>
-        <div class="num"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg></div>
-        <div class="step-body"><b>1. Postu özün yoxla</b><span>Postu aç və orada həqiqətən təhqir olduğuna əmin ol.</span></div>
+        <div class="num"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></div>
+        <div class="step-body"><b>1. X hesabına daxil ol</b><span>Bu səhifəni hansı brauzerdə açmısansa, X-ə də orada daxil ol. Onda adın və e-poçtun formda özü doldurulur.</span></div>
       </li>
       <li>
-        <div class="num"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div>
-        <div class="step-body"><b>2. Şikayətin növünü seç</b><span>Siyahıdan təhqirin formasına uyğun olanı seç.</span></div>
+        <div class="num"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg></div>
+        <div class="step-body"><b>2. Postu özün yoxla</b><span>Postu aç və orada həqiqətən təhqir olduğuna əmin ol.</span></div>
       </li>
       <li>
         <div class="num"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></div>
-        <div class="step-body"><b>3. Linkləri əlavə et</b><span>Postun linkini yapışdır. Bir neçə post varsa, «Link əlavə et» düyməsini bas.</span></div>
+        <div class="step-body"><b>3. Növü seç, linkləri əlavə et</b><span>Təsdiq qutusunu işarələ və «Hazırla» düyməsini bas. Linklər hesablara görə qruplaşdırılır.</span></div>
       </li>
       <li>
-        <div class="num"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg></div>
-        <div class="step-body"><b>4. Təsdiq et</b><span>Postları özün yoxladığını təsdiq edən qutunu işarələ.</span></div>
+        <div class="num"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg></div>
+        <div class="step-body"><b>4. Hər hesab üçün ayrıca form</b><span>X formunda yalnız bir hesab göstərmək olur. Hər kart üçün «X formunu aç» düyməsini bas.</span></div>
       </li>
       <li>
         <div class="num"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></div>
-        <div class="step-body"><b>5. Kopyala</b><span>Düyməni bas: şikayət mətni yaddaşa kopyalanır, X formu yeni tabda açılır.</span></div>
+        <div class="step-body"><b>5. Kopyala və yapışdır</b><span>İstifadəçi adını, hər linki (sonrakılar üçün «Add another link») və mətni formdakı uyğun sahələrə yapışdır.</span></div>
       </li>
       <li>
         <div class="num"><svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg></div>
-        <div class="step-body"><b>6. Formu doldur və göndər</b><span>Formda hesabın adını (@...) və linkləri yaz, mətni «Description» sahəsinə yapışdır və göndər.</span></div>
+        <div class="step-body"><b>6. «Submit» düyməsini özün bas</b><span>Sonra bu səhifədə «Göndərdim» düyməsini bas və növbəti hesaba keç.</span></div>
       </li>
     </ol>
+    <p class="note" style="margin-top:12px">X səhifəsi «404» göstərsə, «X formunu aç» düyməsini bir daha bas.</p>
   </section>
 
   <form class="card" id="form" novalidate>
@@ -211,6 +245,14 @@
     </div>
 
     <div class="field">
+      <span class="lbl" id="target-lbl">Təhqir kimə ünvanlanıb?</span>
+      <div class="seg" role="radiogroup" aria-labelledby="target-lbl">
+        <input type="radio" name="target" id="t-other" value="other" checked><label for="t-other">Başqasına</label>
+        <input type="radio" name="target" id="t-me" value="me"><label for="t-me">Mənə</label>
+      </div>
+    </div>
+
+    <div class="field">
       <label class="lbl" for="url-0">Postun linki</label>
       <div id="urls"></div>
       <button type="button" class="add" id="add">+ Link əlavə et</button>
@@ -225,8 +267,18 @@
       <p class="err-msg" id="confirm-err" hidden>Təsdiq qutusunu işarələyin.</p>
     </div>
 
-    <button type="submit" class="primary" id="go">Kopyala və X formunu aç</button>
+    <button type="submit" class="primary" id="go">Hazırla</button>
   </form>
+
+  <!-- Wizard: filled by script after "Hazırla" -->
+  <section id="result" hidden>
+    <div class="summary"><h2>Şikayətlər</h2><span id="progress"></span></div>
+    <div id="cards"></div>
+    <div class="row2">
+      <button type="button" class="ghost" id="back">← Düzəliş et</button>
+      <button type="button" class="ghost" id="reset">Yeni şikayət</button>
+    </div>
+  </section>
 
   <!-- Shown only when clipboard access fails completely -->
   <section id="fallback" class="panel" hidden>
@@ -244,115 +296,97 @@
   'use strict';
 
   // ---- Config ----
-  const REPORT_FORM_URL = 'https://help.x.com/en/forms/safety-and-sensitive-content/abuse';
+  const FORM_BASE = 'https://help.x.com/en/forms/safety-and-sensitive-content/';
+  // Complaint type -> X form section; suffix /me or /somebody-else is added per target
+  const FORM_SECTION = {
+    abbrev: 'abuse', image: 'abuse', hidden: 'abuse', harass: 'abuse',
+    threat: 'violent-threats', hate: 'hateful-conduct'
+  };
   const MAX_URLS = 10;
+  const MAX_TEXT = 280; // X form "details" field limit
   // Accepts x.com / twitter.com (incl. www., mobile.) status links
   const STATUS_RE = /^https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})\/status(?:es)?\/(\d{5,25})/i;
 
+  const formUrl = (type, target) => FORM_BASE + FORM_SECTION[type] + '/' + (target === 'me' ? 'me' : 'somebody-else');
+
   // ---- Complaint templates (English, never rendered in the UI) ----
+  // Links go to the form's own URL fields, so the text carries no links and must fit MAX_TEXT.
+  // t = { whom: 'me' | 'another user', posts: 'post' | 'posts', these: 'This post targets' | 'These posts target' }
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
-  const plural = (n, one, many) => (n === 1 ? one : many);
 
   const INTROS = [
-    n => `I am reporting the following ${plural(n, 'post', 'posts')} for abusive content that appears to have been missed by automated review.`,
-    n => `Please review the ${plural(n, 'post', 'posts')} listed below. ${plural(n, 'It contains', 'They contain')} targeted abuse written in Turkish.`,
-    n => `I am requesting a manual review of the ${plural(n, 'post', 'posts')} below, which ${plural(n, 'violates', 'violate')} X's rules.`,
-    n => `The ${plural(n, 'post', 'posts')} below ${plural(n, 'was', 'were')} posted as ${plural(n, 'a reply', 'replies')} in a political discussion and ${plural(n, 'contains', 'contain')} direct insults in Turkish.`,
-    n => `Requesting human moderator review: the ${plural(n, 'post', 'posts')} below ${plural(n, 'contains', 'contain')} abusive content that automated filters do not seem to detect.`
+    t => `Requesting manual review of Turkish-language abuse aimed at ${t.whom}.`,
+    t => `${t.these} ${t.whom} with insults in Turkish.`,
+    t => `Automated review missed the abuse in the reported ${t.posts}.`,
+    t => `Please review the reported ${t.posts} manually.`,
+    () => ''
   ];
 
   const TYPES = {
-    abbrev: {
-      policy: 'Abuse and Harassment',
-      desc: [
-        'The insults are written using abbreviations, deliberate misspellings and character substitutions (letters replaced with numbers or symbols, or letters left out) so that keyword filters do not catch them. To a Turkish speaker the meaning is unambiguous profanity.',
-        'The author uses well-known Turkish abbreviations of profanity and intentionally misspelled slurs. These are common filter-evasion techniques; the intended words are obvious to any native speaker.',
-        'Offensive Turkish words are disguised with shortened forms, inserted dots or spaces and altered spelling. The content is still clearly a direct insult aimed at the account holder.',
-        'Profanity is deliberately broken up and misspelled to bypass automated detection. Read by a Turkish speaker, it is plain verbal abuse.'
-      ]
-    },
-    image: {
-      policy: 'Abuse and Harassment',
-      desc: [
-        'The abusive content is embedded in an image (text over a picture, a meme or a screenshot), so text-based moderation cannot detect it. The text in the image contains insults in Turkish.',
-        'The post contains a meme or picture whose written text is a direct insult in Turkish. Because the insult is part of the image rather than the post text, the media itself needs to be reviewed.',
-        'Insulting language is presented as an image, including edited pictures and screenshots, to avoid automated detection. Please review the attached media.',
-        'The insult is placed inside the image instead of the post text. The visible text in the media is abusive language in Turkish directed at the account holder.'
-      ]
-    },
-    hidden: {
-      policy: 'Abuse and Harassment',
-      desc: [
-        'The posts use coded language, euphemisms and insinuations that are understood in Turkish as degrading insults, even though no explicit profanity appears.',
-        'The insults are expressed indirectly through idioms, wordplay and double meanings. In the Turkish cultural context these phrases are clearly meant to demean the target.',
-        'These replies rely on implied meaning and dog-whistle expressions. A literal translation may look harmless, but native speakers understand them as targeted abuse.',
-        'The wording is deliberately indirect so that it passes filters, but the intended meaning in Turkish is an insult aimed at the account holder.'
-      ]
-    },
-    harass: {
-      policy: 'Abuse and Harassment',
-      desc: [
-        'These posts are part of a pattern of targeted harassment: repeated abusive replies aimed at the same account, sometimes with other users tagged to amplify the attack.',
-        'The account is being repeatedly targeted with insulting replies. The links are provided together to show a pattern rather than a single incident.',
-        'Several users are directing abusive replies and mentions at one account in an apparent attempt to intimidate and silence it.',
-        'The same account receives a stream of insulting replies in Turkish. Taken together, the posts show sustained targeted harassment.'
-      ]
-    },
-    threat: {
-      policy: 'Violent Speech',
-      desc: [
-        'The posts contain threats or wishes of physical harm toward the account holder, written in Turkish.',
-        'The content includes violent language: statements implying or encouraging physical harm against the target. This should be reviewed urgently.',
-        'These replies express intent or desire to harm the person, partly using coded or abbreviated wording to avoid detection.',
-        'The author threatens the account holder with violence. Some of the wording is shortened or misspelled, but the threat is clear in Turkish.'
-      ]
-    },
-    hate: {
-      policy: 'Hateful Conduct',
-      desc: [
-        'The insults target the person\'s ethnicity, nationality or religion, using slurs and dehumanizing language in Turkish.',
-        'The posts attack the target based on protected characteristics (ethnic origin and/or religion), including derogatory terms common in Turkish.',
-        'Dehumanizing language and ethnic or religious slurs are used against the account holder, sometimes disguised through spelling changes to avoid filters.',
-        'The content insults the account holder on the basis of ethnic origin or religion, using slurs that a Turkish speaker immediately recognizes.'
-      ]
-    }
+    abbrev: { policy: 'Abuse and Harassment', desc: [
+      'Profanity is hidden with abbreviations and deliberate misspellings to evade filters; the meaning is obvious to native speakers.',
+      'Insults are written in shortened or misspelled form (letters swapped for numbers or symbols) so keyword filters miss them.',
+      'Well-known Turkish profanity abbreviations and altered spellings are used. Any Turkish speaker reads them as direct insults.'
+    ]},
+    image: { policy: 'Abuse and Harassment', desc: [
+      'The insult is written inside an image (meme or screenshot), so text-based moderation cannot see it. Please check the media.',
+      'The abusive Turkish text is part of the attached image, not the post text. The media itself needs review.',
+      'Insults are embedded in pictures to avoid detection. The text visible in the media is direct verbal abuse.'
+    ]},
+    hidden: { policy: 'Abuse and Harassment', desc: [
+      'Coded language and euphemisms are used that Turkish speakers clearly understand as degrading insults.',
+      'The abuse is indirect (idioms, wordplay, double meanings) but its intent to demean is clear in Turkish.',
+      'A literal translation may look harmless, but in Turkish these phrases are well-known insults.'
+    ]},
+    harass: { policy: 'Abuse and Harassment', desc: [
+      'This is part of a pattern of repeated abusive replies at the same account, sometimes tagging others to pile on.',
+      'The account is repeatedly targeted with insulting replies; together they show sustained harassment.',
+      'Coordinated abusive replies and mentions are used to intimidate and silence the targeted account.'
+    ]},
+    threat: { policy: 'Violent Speech', desc: [
+      'The content threatens or wishes physical harm, partly in abbreviated or misspelled Turkish to avoid detection.',
+      'Violent language implying or encouraging physical harm is used. Please review urgently.',
+      'The author expresses intent or desire to hurt the person. The threat is clear in Turkish.'
+    ]},
+    hate: { policy: 'Hateful Conduct', desc: [
+      'Ethnic or religious slurs and dehumanizing language are used, partly with altered spelling to evade filters.',
+      'The insults attack ethnicity, national origin or religion using derogatory Turkish terms.',
+      'Protected characteristics (ethnicity, religion) are targeted with slurs a Turkish speaker immediately recognizes.'
+    ]}
   };
 
   const POLICY_LINES = [
-    p => `This violates X's ${p} policy.`,
-    p => `In my view this is a clear violation of the ${p} policy.`,
-    p => `This falls under X's ${p} rules.`,
+    p => `This violates the ${p} policy.`,
+    p => `${p} policy violation.`,
     () => ''
   ];
 
   const CLOSINGS = [
-    'Please review this content manually and take appropriate action under X\'s rules.',
-    'I kindly ask that a human moderator, ideally one who reads Turkish, review this content.',
-    'Automated review has not addressed this content so far. Thank you for checking it manually.',
-    'I request that the content be removed and the responsible account(s) be reviewed for repeated violations.',
-    'Thank you for your time and for reviewing this report.'
+    'Please have a Turkish-speaking moderator review it.',
+    'Please review manually and take action.',
+    'Thank you for reviewing.',
+    'Requesting removal and review of the account.',
+    ''
   ];
 
-  const LIST_HEADERS = [
-    n => plural(n, 'Reported post:', 'Reported posts:'),
-    n => plural(n, 'Post URL:', 'Post URLs:'),
-    () => 'Links:'
-  ];
-
-  function buildComplaint(type, urls) {
-    const t = TYPES[type];
-    const n = urls.length;
-    const policy = pick(POLICY_LINES)(t.policy);
-    const body = [pick(INTROS)(n), pick(t.desc) + (policy ? ' ' + policy : '')];
-    const list = pick(LIST_HEADERS)(n) + '\n' + urls.map(u => '- ' + u).join('\n');
-    // Randomly place the link list before or after the description for variety
-    const parts = Math.random() < 0.5
-      ? [body[0], body[1], list, pick(CLOSINGS)]
-      : [body[0], list, body[1], pick(CLOSINGS)];
-    return parts.join('\n\n');
+  function buildText(type, target, n) {
+    const t = {
+      whom: target === 'me' ? 'me' : 'another user',
+      posts: n === 1 ? 'post' : 'posts',
+      these: n === 1 ? 'This post targets' : 'These posts target'
+    };
+    const ty = TYPES[type];
+    // Random combination; retry until it fits the field limit
+    for (let i = 0; i < 40; i++) {
+      const s = [pick(INTROS)(t), pick(ty.desc), pick(POLICY_LINES)(ty.policy), pick(CLOSINGS)]
+        .filter(Boolean).join(' ');
+      if (s.length <= MAX_TEXT && s.length >= 90) return s;
+    }
+    return ty.desc[0].slice(0, MAX_TEXT);
   }
 
   // ---- Panels (accordion: one open at a time) ----
+  const player = document.getElementById('player');
   const tabBtns = document.querySelectorAll('nav.tabs button');
   tabBtns.forEach(btn => btn.addEventListener('click', () => {
     const open = btn.getAttribute('aria-expanded') === 'true';
@@ -368,8 +402,6 @@
     }
     if (btn.dataset.target !== 'p-audio' || open) player.pause();
   }));
-
-  const player = document.getElementById('player');
   player.addEventListener('error', () => {
     document.getElementById('audio-missing').hidden = false;
   });
@@ -458,6 +490,25 @@
     return ok;
   }
 
+  function copy(text) {
+    const syncOk = copySync(text);
+    const asyncP = (navigator.clipboard && window.isSecureContext)
+      ? navigator.clipboard.writeText(text).then(() => true, () => false)
+      : Promise.resolve(false);
+    return asyncP.then(a => {
+      const ok = syncOk || a;
+      const fb = document.getElementById('fallback');
+      if (!ok) {
+        document.getElementById('fallback-text').value = text;
+        fb.hidden = false;
+        fb.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        fb.hidden = true;
+      }
+      return ok;
+    });
+  }
+
   // ---- Toast ----
   const toast = document.getElementById('toast');
   let toastTimer;
@@ -466,11 +517,90 @@
     toast.classList.toggle('warn', !!warn);
     toast.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove('show'), ms || 6000);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), ms || 3500);
   }
 
-  // ---- Submit ----
+  // ---- Wizard ----
   const form = document.getElementById('form');
+  const result = document.getElementById('result');
+  const cardsBox = document.getElementById('cards');
+  const progress = document.getElementById('progress');
+  let accounts = []; // [{ user, urls[], text, url, done }]
+
+  const shortUrl = u => '…/status/' + u.split('/status/')[1].slice(-6);
+
+  function renderCards() {
+    cardsBox.innerHTML = '';
+    const active = accounts.findIndex(a => !a.done);
+    accounts.forEach((a, i) => {
+      const card = document.createElement('div');
+      card.className = 'acc' + (i === active ? ' active' : '') + (a.done ? ' done' : '');
+      const linkBtns = a.urls.map((u, j) =>
+        `<button type="button" class="act" data-act="link" data-j="${j}">Link ${j + 1} · ${shortUrl(u)}</button>`).join('');
+      card.innerHTML = `
+        <button type="button" class="acc-head" aria-expanded="${i === active}">
+          <span class="badge">${i + 1}/${accounts.length}</span>
+          <span class="who">@${a.user}</span>
+          <span class="state">${a.done ? 'Göndərildi ✓' : ''}</span>
+        </button>
+        <div class="acc-body" ${i === active ? '' : 'hidden'}>
+          <ol class="todo">
+            <li><span class="hint">X şikayət formunu yeni tabda aç.</span>
+              <div class="btns"><button type="button" class="act main" data-act="open">X formunu aç</button></div></li>
+            <li><span class="hint">Kopyala və <b>«Username of the account you are reporting»</b> sahəsinə yapışdır.</span>
+              <div class="btns"><button type="button" class="act" data-act="user">@${a.user} kopyala</button></div></li>
+            <li><span class="hint">Hər linki ayrıca kopyala və <b>«Please share the content…»</b> sahəsinə yapışdır. Növbəti link üçün formda <b>«Add another link»</b> bas.</span>
+              <div class="btns">${linkBtns}</div></li>
+            <li><span class="hint">Kopyala və <b>«Please provide more details»</b> sahəsinə yapışdır.</span>
+              <div class="btns"><button type="button" class="act" data-act="text">Mətni kopyala</button></div>
+              <small>${a.text.length} / ${MAX_TEXT} simvol</small></li>
+            <li><span class="hint">Formda <b>«Submit»</b> düyməsini özün bas, sonra:</span>
+              <div class="btns"><button type="button" class="act main" data-act="done">Göndərdim →</button></div></li>
+          </ol>
+        </div>`;
+      card.querySelector('.acc-head').addEventListener('click', () => {
+        const body = card.querySelector('.acc-body');
+        body.hidden = !body.hidden;
+        card.querySelector('.acc-head').setAttribute('aria-expanded', String(!body.hidden));
+      });
+      card.querySelector('.acc-body').addEventListener('click', e => onAction(e, a, i));
+      cardsBox.appendChild(card);
+    });
+    const done = accounts.filter(a => a.done).length;
+    progress.textContent = `${done} / ${accounts.length} göndərildi`;
+    if (done === accounts.length) {
+      const fin = document.createElement('div');
+      fin.className = 'alldone';
+      fin.textContent = 'Bütün şikayətlər göndərildi. Təşəkkürlər!';
+      cardsBox.appendChild(fin);
+    }
+  }
+
+  function onAction(e, a, i) {
+    const btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    const act = btn.dataset.act;
+    if (act === 'open') {
+      // Must stay synchronous inside the click to avoid popup blockers
+      window.open(a.url, '_blank', 'noopener');
+      btn.classList.add('ok');
+      return;
+    }
+    if (act === 'done') {
+      a.done = true;
+      renderCards();
+      const next = cardsBox.querySelector('.acc.active');
+      (next || cardsBox).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    const text = act === 'user' ? a.user : act === 'link' ? a.urls[+btn.dataset.j] : a.text;
+    copy(text).then(ok => {
+      if (ok) { btn.classList.add('ok'); showToast('<b>Kopyalandı ✓</b> İndi X formuna yapışdırın.'); }
+      else showToast('Kopyalama alınmadı. Mətni aşağıdan əl ilə kopyalayın.', true, 6000);
+    });
+  }
+
+  // ---- Submit: validate, group links by account, build wizard ----
   const typeSel = document.getElementById('type');
   const confirmBox = document.getElementById('confirm');
   const errType = document.getElementById('type-err');
@@ -481,21 +611,19 @@
     e.preventDefault();
     let firstBad = null;
 
-    // Type
     errType.hidden = !!typeSel.value;
-    if (!typeSel.value) firstBad = firstBad || typeSel;
+    if (!typeSel.value) firstBad = typeSel;
 
-    // URLs
     const seen = new Set();
-    const urls = [];
-    let invalid = 0, dupes = 0;
+    const items = [];
+    let bad = 0;
     urlsBox.querySelectorAll('.url-row input').forEach(input => {
       const meta = input.closest('div').nextElementSibling;
       if (!input.value.trim()) return;
       const n = validateRow(input, meta, false);
-      if (!n) { invalid++; firstBad = firstBad || input; return; }
+      if (!n) { bad++; firstBad = firstBad || input; return; }
       if (seen.has(n.url)) {
-        dupes++;
+        bad++;
         input.classList.add('invalid');
         meta.className = 'url-meta err';
         meta.textContent = 'Bu link artıq əlavə edilib.';
@@ -503,12 +631,12 @@
         return;
       }
       seen.add(n.url);
-      urls.push(n.url);
+      items.push(n);
     });
-    if (invalid || dupes) {
+    if (bad) {
       errUrls.hidden = false;
       errUrls.textContent = 'Səhv və ya təkrar linkləri düzəldin.';
-    } else if (!urls.length) {
+    } else if (!items.length) {
       errUrls.hidden = false;
       errUrls.textContent = 'Ən azı bir post linki daxil edin.';
       firstBad = firstBad || urlsBox.querySelector('input');
@@ -516,41 +644,48 @@
       errUrls.hidden = true;
     }
 
-    // Confirmation
     errConfirm.hidden = confirmBox.checked;
     if (!confirmBox.checked) firstBad = firstBad || confirmBox;
 
     if (firstBad) { firstBad.focus(); return; }
 
-    const text = buildComplaint(typeSel.value, urls);
-
-    // Copy synchronously first (keeps user-gesture context), then async API as a backup
-    const syncOk = copySync(text);
-    let asyncP = Promise.resolve(false);
-    if (navigator.clipboard && window.isSecureContext) {
-      asyncP = navigator.clipboard.writeText(text).then(() => true, () => false);
-    }
-
-    // Open the X form inside the same gesture to avoid popup blockers
-    window.open(REPORT_FORM_URL, '_blank', 'noopener');
-
-    const users = [...new Set(urls.map(u => '@' + u.split('/')[3]))].join(', ');
-    asyncP.then(asyncOk => {
-      const copied = syncOk || asyncOk;
-      const fb = document.getElementById('fallback');
-      if (!copied) {
-        document.getElementById('fallback-text').value = text;
-        fb.hidden = false;
-        fb.scrollIntoView({ behavior: 'smooth' });
-        showToast('Kopyalama alınmadı. Mətni aşağıdan əl ilə kopyalayın.', true, 8000);
-        return;
-      }
-      fb.hidden = true;
-      let msg = `<b>Mətn kopyalandı ✓</b><br>X formunda «Description» sahəsinə yapışdırın.<br>Hesab: ${users}`;
-      // Some browsers return null for noopener windows even when the tab opened, so always offer a link
-      msg += `<br><a href="${REPORT_FORM_URL}" target="_blank" rel="noopener">X formu açılmadısa, buraya toxunun</a>`;
-      showToast(msg, false, 12000);
+    const type = typeSel.value;
+    const target = form.querySelector('input[name="target"]:checked').value;
+    const groups = new Map(); // case-insensitive username -> account
+    items.forEach(it => {
+      const key = it.user.toLowerCase();
+      if (!groups.has(key)) groups.set(key, { user: it.user, urls: [] });
+      groups.get(key).urls.push(it.url);
     });
+    accounts = [...groups.values()].map(g => ({
+      ...g,
+      text: buildText(type, target, g.urls.length), // separate random variant per account
+      url: formUrl(type, target),
+      done: false
+    }));
+
+    form.hidden = true;
+    result.hidden = false;
+    renderCards();
+    result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  document.getElementById('back').addEventListener('click', () => {
+    result.hidden = true;
+    form.hidden = false;
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  document.getElementById('reset').addEventListener('click', () => {
+    accounts = [];
+    form.reset();
+    urlsBox.innerHTML = '';
+    addRow(false);
+    [errType, errUrls, errConfirm].forEach(el => { el.hidden = true; });
+    document.getElementById('fallback').hidden = true;
+    result.hidden = true;
+    form.hidden = false;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 })();
 </script>

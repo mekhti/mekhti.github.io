@@ -31,12 +31,13 @@ gh api -X POST repos/{owner}/iti-qovan/pages -f "source[branch]=main" -f "source
 Without `gh`: create a public repo `iti-qovan` on github.com → upload files →
 Settings → Pages → Source: *Deploy from a branch*, Branch: `main` / `/ (root)` → Save.
 
-URL after 1–2 minutes: `https://<username>.github.io/iti-qovan/`
+Live: https://mekhti.github.io/
 
 ## Editing
 
 - Purpose text: `#p-goal` in `index.html` + `tools/purpose_az.txt`, then re-run `tts.py`.
 - Complaint types: `<option>` in `#type` + matching key in `TYPES` (script).
-- Template phrases: `INTROS`, `TYPES[*].desc`, `POLICY_LINES`, `CLOSINGS`, `LIST_HEADERS`.
-- X form URL: `REPORT_FORM_URL`.
+- Template phrases: `INTROS`, `TYPES[*].desc`, `POLICY_LINES`, `CLOSINGS`.
+- X forms: `FORM_BASE` + `FORM_SECTION[type]` + `/me` or `/somebody-else`.
+- Complaint text is limited to `MAX_TEXT` (280, X form limit); links are not part of the text, they go to the form's URL fields.
 - Bypass browser cache after updates: hard refresh, or rename `audio/meqsed.mp3` → `meqsed-v2.mp3` and update `src`.
