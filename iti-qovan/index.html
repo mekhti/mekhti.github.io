@@ -314,75 +314,122 @@
   // t = { whom: 'me' | 'another user', posts: 'post' | 'posts', these: 'This post targets' | 'These posts target' }
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
+  // Mini template grammar: "{a|b|c}" picks one option at random; groups may nest; "{|x}" = optional x.
+  function expand(tpl) {
+    let s = tpl, prev;
+    do { prev = s; s = s.replace(/\{([^{}]*)\}/g, (_, g) => pick(g.split('|'))); } while (s !== prev);
+    return s.replace(/\s{2,}/g, ' ').trim();
+  }
+
+  // ${whom} / ${posts} / ${these} are filled before expansion (see buildText)
   const INTROS = [
-    t => `Requesting manual review of Turkish-language abuse aimed at ${t.whom}.`,
-    t => `${t.these} ${t.whom} with insults in Turkish.`,
-    t => `Automated review missed the abuse in the reported ${t.posts}.`,
-    t => `Please review the reported ${t.posts} manually.`,
-    () => ''
+    '{Requesting|I am requesting|I would like to request} a {manual|human|moderator} review of {Turkish-language|Turkish} {abuse|insults|harassment} {aimed at|directed at|targeting} ${whom}.',
+    '${these} ${whom} with {insults|abusive language|verbal abuse} in Turkish.',
+    '{Automated review|Automatic moderation|Your automated filters} {missed|did not catch|failed to detect} the {abuse|insults} in the reported ${posts}.',
+    'Please {review|check|look at} the reported ${posts} {manually|with a human moderator|in person}.',
+    ''
   ];
 
+  // Per type: [technique sentences], [clarity sentences]; one of each is used
   const TYPES = {
-    abbrev: { policy: 'Abuse and Harassment', desc: [
-      'Profanity is hidden with abbreviations and deliberate misspellings to evade filters; the meaning is obvious to native speakers.',
-      'Insults are written in shortened or misspelled form (letters swapped for numbers or symbols) so keyword filters miss them.',
-      'Well-known Turkish profanity abbreviations and altered spellings are used. Any Turkish speaker reads them as direct insults.'
-    ]},
-    image: { policy: 'Abuse and Harassment', desc: [
-      'The insult is written inside an image (meme or screenshot), so text-based moderation cannot see it. Please check the media.',
-      'The abusive Turkish text is part of the attached image, not the post text. The media itself needs review.',
-      'Insults are embedded in pictures to avoid detection. The text visible in the media is direct verbal abuse.'
-    ]},
-    hidden: { policy: 'Abuse and Harassment', desc: [
-      'Coded language and euphemisms are used that Turkish speakers clearly understand as degrading insults.',
-      'The abuse is indirect (idioms, wordplay, double meanings) but its intent to demean is clear in Turkish.',
-      'A literal translation may look harmless, but in Turkish these phrases are well-known insults.'
-    ]},
-    harass: { policy: 'Abuse and Harassment', desc: [
-      'This is part of a pattern of repeated abusive replies at the same account, sometimes tagging others to pile on.',
-      'The account is repeatedly targeted with insulting replies; together they show sustained harassment.',
-      'Coordinated abusive replies and mentions are used to intimidate and silence the targeted account.'
-    ]},
-    threat: { policy: 'Violent Speech', desc: [
-      'The content threatens or wishes physical harm, partly in abbreviated or misspelled Turkish to avoid detection.',
-      'Violent language implying or encouraging physical harm is used. Please review urgently.',
-      'The author expresses intent or desire to hurt the person. The threat is clear in Turkish.'
-    ]},
-    hate: { policy: 'Hateful Conduct', desc: [
-      'Ethnic or religious slurs and dehumanizing language are used, partly with altered spelling to evade filters.',
-      'The insults attack ethnicity, national origin or religion using derogatory Turkish terms.',
-      'Protected characteristics (ethnicity, religion) are targeted with slurs a Turkish speaker immediately recognizes.'
-    ]}
+    abbrev: { policy: 'Abuse and Harassment',
+      how: [
+        '{Profanity|The insults|Offensive words} {are hidden|are disguised|are written} {with|using} {abbreviations|shortened forms|acronyms} and {deliberate|intentional} misspellings {to evade|to bypass|to get past} {filters|keyword filters|automated detection}.',
+        '{Letters are swapped for numbers or symbols|Letters are replaced or dropped|Dots and spaces are inserted into words} so that {keyword|automated} filters {miss|do not catch} the {insults|profanity|slurs}.',
+        '{Well-known|Common} Turkish {profanity abbreviations|slang abbreviations for insults} and {altered|broken|misspelled} spellings are used.'
+      ],
+      clear: [
+        'The meaning is {obvious|unambiguous|clear} to {any|every} {native speaker|Turkish speaker}.',
+        '{Any|Every} Turkish speaker {reads|understands|recognizes} {them|these words} as {direct|explicit|plain} insults.',
+        '{Read by a native speaker|To a Turkish reader}, it is {plain|direct|explicit} verbal abuse.'
+      ]},
+    image: { policy: 'Abuse and Harassment',
+      how: [
+        'The {insult|abusive text} is {written|placed|embedded} {inside|in} {an image|a meme|a screenshot|the attached picture}, so text-based moderation {cannot|does not} {see|detect} it.',
+        'The abusive Turkish text is part of the {attached image|media|picture}, not the post text.',
+        '{Insults|Abusive words} are {put|embedded} in {pictures|images|memes} to {avoid|escape|get around} {detection|automated review|text filters}.'
+      ],
+      clear: [
+        'The {media|image|attachment} itself {should|needs to} be {checked|reviewed}.',
+        'The {visible|written} text in the {image|media} is {direct|plain|explicit} verbal abuse.',
+        'The media {itself|directly} {needs|requires} {review|human review}.'
+      ]},
+    hidden: { policy: 'Abuse and Harassment',
+      how: [
+        '{Coded language|Euphemisms|Insinuations} and {double meanings|wordplay|idioms} are used {instead of|in place of|rather than} explicit profanity.',
+        'The {abuse|insult} is {indirect|implied|veiled}, {expressed|delivered|conveyed} through {idioms|wordplay|double meanings|dog-whistle phrases}.',
+        '{A literal|A word-for-word|A machine} translation {may look|can look|might seem} {harmless|innocent|neutral}.'
+      ],
+      clear: [
+        'In Turkish, the intent to {demean|degrade|humiliate} is {clear|obvious|unmistakable}.',
+        '{Native speakers|Turkish speakers} {understand|recognize|read} {it|this} as a {degrading|targeted|deliberate} insult.',
+        'The {intended|real} meaning is {clearly|plainly|obviously} {insulting|degrading|abusive}.'
+      ]},
+    harass: { policy: 'Abuse and Harassment',
+      how: [
+        '{This|The reported content} is part of a {pattern|series|campaign} of {repeated|ongoing|sustained} abusive replies {to|against} the same account.',
+        'The account is {repeatedly|constantly|persistently} {targeted|attacked|flooded} with {insulting|abusive|degrading} replies{| in Turkish}.',
+        '{Several|Multiple} {users|accounts} {direct|send} abusive replies and mentions {at|to} {one|the same} account.'
+      ],
+      clear: [
+        '{Other users are tagged|Others are tagged in} to {amplify|escalate} the {attack|harassment|abuse}.',
+        '{Together|Taken together}, the posts show {sustained|targeted|coordinated} harassment.',
+        'The {goal|aim|intent} {appears to be|seems to be|is} to {intimidate|silence|scare off} the {targeted user|account holder}.'
+      ]},
+    threat: { policy: 'Violent Speech',
+      how: [
+        'The {content|post|reply} {threatens|wishes|calls for} physical harm {against|toward} the {person|targeted user|account holder}.',
+        '{Violent language|Violent wording} {implying|suggesting|encouraging} physical harm is used.',
+        'The author {expresses|states|signals} {intent|a desire|a wish} to {hurt|harm|attack} the {person|targeted user}.'
+      ],
+      clear: [
+        '{Part of|Some of} the wording is {abbreviated|misspelled|coded} to {avoid|evade} detection.',
+        'The threat is {clear|unambiguous|explicit} in Turkish.',
+        'This should be reviewed {urgently|as a priority|with priority}.'
+      ]},
+    hate: { policy: 'Hateful Conduct',
+      how: [
+        '{Ethnic|Ethnic and religious|Religious} slurs and {dehumanizing|degrading|derogatory} language are used.',
+        'The insults {attack|target|demean} the person\'s {ethnicity|ethnic origin|national origin|religion}.',
+        '{Protected characteristics|Ethnicity and religion} are {targeted|attacked|insulted} with {slurs|derogatory terms|demeaning terms}.'
+      ],
+      clear: [
+        'Some {slurs|terms} are {misspelled|altered|disguised} to {evade|avoid|bypass} filters.',
+        'A Turkish speaker {immediately|instantly|clearly} {recognizes|understands} {them|these terms} as {hate speech|slurs}.',
+        'The {wording|language} is {clearly|plainly|openly} {hateful|discriminatory|demeaning}.'
+      ]}
   };
 
   const POLICY_LINES = [
-    p => `This violates the ${p} policy.`,
-    p => `${p} policy violation.`,
-    () => ''
+    '{This violates|This breaks|This is a violation of} {X\'s|the} ${policy} {policy|rules}.',
+    '${policy} policy violation.',
+    '{Relevant|Applicable} policy: ${policy}.',
+    ''
   ];
 
   const CLOSINGS = [
-    'Please have a Turkish-speaking moderator review it.',
-    'Please review manually and take action.',
-    'Thank you for reviewing.',
-    'Requesting removal and review of the account.',
+    'Please {have|let} a Turkish-speaking moderator {review|check} {it|this|the content}.',
+    'Please {review|check} {it|this} manually and take {action|appropriate action}.',
+    '{Thank you|Thanks} for {reviewing|your review|checking this}.',
+    '{Requesting|I request} removal {|of the content }and a review of the account.',
     ''
   ];
 
   function buildText(type, target, n) {
-    const t = {
+    const v = {
       whom: target === 'me' ? 'me' : 'another user',
       posts: n === 1 ? 'post' : 'posts',
       these: n === 1 ? 'This post targets' : 'These posts target'
     };
     const ty = TYPES[type];
+    const fill = s => s.replace(/\$\{(\w+)\}/g, (_, k) => k === 'policy' ? ty.policy : v[k]);
     // Random combination; retry until it fits the field limit
-    for (let i = 0; i < 40; i++) {
-      const s = [pick(INTROS)(t), pick(ty.desc), pick(POLICY_LINES)(ty.policy), pick(CLOSINGS)]
-        .filter(Boolean).join(' ');
+    for (let i = 0; i < 60; i++) {
+      const s = [pick(INTROS), pick(ty.how), pick(ty.clear), pick(POLICY_LINES), pick(CLOSINGS)]
+        .map(p => expand(fill(p))).filter(Boolean).join(' ');
       if (s.length <= MAX_TEXT && s.length >= 90) return s;
     }
-    return ty.desc[0].slice(0, MAX_TEXT);
+    return expand(fill(ty.how[0]));
   }
 
   // ---- Panels (accordion: one open at a time) ----
