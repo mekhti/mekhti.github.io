@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate audio/meqsed.mp3 from tools/purpose_az.txt via Azure Speech REST API.
+"""Generate iti-qovan/audio/meqsed.mp3 from tools/purpose_az.txt via Azure Speech REST API.
 
 No third-party dependencies (stdlib only).
 
@@ -18,7 +18,7 @@ from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "tools" / "purpose_az.txt"
-OUT = ROOT / "audio" / "meqsed.mp3"
+OUT = ROOT / "iti-qovan" / "audio" / "meqsed.mp3"
 
 
 def build_ssml(text: str, voice: str, rate: str) -> str:

@@ -3,8 +3,9 @@
 Static single-page site. No build step, no dependencies.
 
 ```
-index.html            page (UI in Azerbaijani, complaint templates in English inside <script>)
-audio/meqsed.mp3      TTS of the purpose text (generate with tools/tts.py)
+index.html                     root redirect -> /iti-qovan/
+iti-qovan/index.html           page (UI in Azerbaijani, complaint templates in English inside <script>)
+iti-qovan/audio/meqsed.mp3     TTS of the purpose text (generate with tools/tts.py)
 tools/purpose_az.txt  purpose text, source for TTS — keep in sync with #p-goal in index.html
 tools/tts.py          Azure Speech REST → MP3 (stdlib only)
 ```
@@ -31,13 +32,13 @@ gh api -X POST repos/{owner}/iti-qovan/pages -f "source[branch]=main" -f "source
 Without `gh`: create a public repo `iti-qovan` on github.com → upload files →
 Settings → Pages → Source: *Deploy from a branch*, Branch: `main` / `/ (root)` → Save.
 
-Live: https://mekhti.github.io/
+Live: https://mekhti.github.io/iti-qovan/ (root redirects there)
 
 ## Editing
 
-- Purpose text: `#p-goal` in `index.html` + `tools/purpose_az.txt`, then re-run `tts.py`.
-- Complaint types: `<option>` in `#type` + matching key in `TYPES` (script).
+- Purpose text: `#p-goal` in `iti-qovan/index.html` + `tools/purpose_az.txt`, then re-run `tts.py`.
+- Complaint types: `<option>` in `#type` (`iti-qovan/index.html`) + matching key in `TYPES` (script).
 - Template phrases: `INTROS`, `TYPES[*].desc`, `POLICY_LINES`, `CLOSINGS`.
 - X forms: `FORM_BASE` + `FORM_SECTION[type]` + `/me` or `/somebody-else`.
 - Complaint text is limited to `MAX_TEXT` (280, X form limit); links are not part of the text, they go to the form's URL fields.
-- Bypass browser cache after updates: hard refresh, or rename `audio/meqsed.mp3` → `meqsed-v2.mp3` and update `src`.
+- Bypass browser cache after updates: hard refresh, or rename `iti-qovan/audio/meqsed.mp3` → `meqsed-v2.mp3` and update `src`.
